@@ -71,7 +71,11 @@ float sampleTime;
 // Control variables
 char moveDirection = 'S';
 float speedMult = 0;
-#include "bluetooth_macros.h" // App macros for switch
+#include "bluetooth.h" // App macros for switch
+
+// Data vars
+bool printData = false; // Send info to serial
+short dataLines = 0;    // Amount of lines already printed
 /*=======================================
         Create motor and MPU objects
    ======================================
@@ -140,6 +144,9 @@ void setup()
 
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
+
+    // Info
+    Serial.println(F("MPU6050 Ready!"));
   }
   else
   {
@@ -257,6 +264,9 @@ void loop()
       case SPEED10:
         speedMult = 1.0; // Scale to decrease speed, since from 1-10
         break;
+      case DATA:
+        printData = true;
+        break;
       default:
         break;
       }
@@ -321,19 +331,32 @@ void loop()
 
     // Set motors
     drive(RMotor, LMotor, spMotorPower);
-    /* Uncomment to print yaw/pitch/roll
-        Serial.print("ypr m/Sm/t\t");
-        Serial.print(ypr[0] * 180 / M_PI);
-        Serial.print("\t");
-        Serial.print(ypr[1] * 180 / M_PI);
-        Serial.print("\t");
-        Serial.print(ypr[2] * 180 / M_PI);
-        Serial.print("\t \t");
-        Serial.print(motorPower);
-        Serial.print("\t");
-        Serial.print(spMotorPower);
-        Serial.print("\t");
-        Serial.println(sampleTime);
-      //*/
+
+    // Print some debug info
+    if (printData)
+    {
+      if (dataLines == 0)
+      {
+        Serial.println(F("   \t     \t    \t│"));
+        Serial.println(F("Yaw\tPitch\tRoll\t│\tmotorPower\tconstrainedMotorPower\tsampleTime"));
+      }
+      Serial.print(ypr[0] * 180 / M_PI);
+      Serial.print(F("\t"));
+      Serial.print(ypr[1] * 180 / M_PI);
+      Serial.print(F("\t"));
+      Serial.print(ypr[2] * 180 / M_PI);
+      Serial.print(F("\t│\t"));
+      Serial.print(motorPower);
+      Serial.print(F("\t\t"));
+      Serial.print(spMotorPower);
+      Serial.print(F("\t\t\t"));
+      Serial.println(sampleTime);
+
+      dataLines++;
+      if (dataLines == 10)
+      {
+        dataLines = 0;
+      }
+    }
   }
 }

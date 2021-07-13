@@ -1,6 +1,8 @@
 /*
  * Macro definitions for Bluetooth RC Car app
  */
+#ifndef _BL_MACRO_
+#define _BL_MACRO_
 
 // Directions
 #define FORWARD 'F'
@@ -25,3 +27,7 @@
 #define SPEED8 '8'
 #define SPEED9 '9'
 #define SPEED10 'q'
+
+// Send data
+#define DATA 'z'
+#endif
