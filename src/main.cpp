@@ -169,6 +169,10 @@ void setup()
     pid.SetSampleTime(10);
     pid.SetOutputLimits(-255, 255);
 
+    // Update PID constants
+    computePIDConsts(Kp, Ki, Kd, Kp_PIN, Ki_PIN, Kd_PIN);
+    pid.SetTunings(Kp, Ki, Kd);
+
     // Info
     Serial.println(F("Ready!"));
   }

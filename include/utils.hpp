@@ -8,4 +8,6 @@
 void drive(L298N &motor, int speed);
 void drive(L298N &motor1, L298N &motor2, int speed);
 void computePIDConsts(double &Kp, double &Ki, double &Kd, int pinKp, int pinKi, int pinKd);
+float floatmap(float x, float in_min, float in_max, float out_min, float out_max);
+
 #endif

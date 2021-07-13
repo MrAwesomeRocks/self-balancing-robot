@@ -49,7 +49,12 @@ void computePIDConsts(double &Kp, double &Ki, double &Kd, int pinKp, int pinKi, 
     int rawKd = analogRead(pinKd);
 
     // Map to Kp/Ki/Kd
-    Kp = map(rawKp, 0, 1023, 0, 10000);
-    Ki = map(rawKi, 0, 1023, 0, 10000);
-    Kd = map(rawKd, 0, 1023, 0, 10000);
+    Kp = floatmap(rawKp, 0, 1023, 0, 200);
+    Ki = floatmap(rawKi, 0, 1023, 0, 200);
+    Kd = floatmap(rawKd, 0, 1023, 0, 200);
+}
+
+float floatmap(float x, float in_min, float in_max, float out_min, float out_max)
+{
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
