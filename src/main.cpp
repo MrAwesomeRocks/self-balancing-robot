@@ -96,7 +96,7 @@ char moveDirection = 'S'; // Movement direction of robot (from BT)
 float speedMult = 1;      // Speed mutliplier of robot (from BT)
 
 // PID
-PID pid(&angle, &motorPower, &targetAngle, Kp, Ki, Kd, P_ON_E, DIRECT);
+PID pid(&angle, &motorPower, &targetAngle, Kp, Ki, Kd, P_ON_E, REVERSE);
 
 /*
 ===============
