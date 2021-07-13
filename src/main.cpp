@@ -10,31 +10,28 @@
 #include "MPU6050_6Axis_MotionApps20.h"
 #include "Wire.h"
 
-// Include motor library
-#include "SparkFun_TB6612.h"
+// Motor libraries
+#include "L298N.h"
+#include "motor_utils.h"
 
 /* ======================================
            Define motor constants
    ======================================
 */
 // Motor A:
-#define AIN1 3
-#define AIN2 4
-#define PWMA 5
-const int offsetA = 1; // Direction offset
+#define IN1_A 3 // Direction Pin 1
+#define IN2_A 4 // Direction Pin 2
+#define EN_A 5  // PWM Speed Pin
 // Motor B:
-#define BIN1 8
-#define BIN2 7
-#define PWMB 6
-const int offsetB = -1; // Direction offset
-// Standby pin
-#define STBY 9
+#define IN1_B 8 // Direction Pin 1
+#define IN2_B 7 // Direction Pin 2
+#define EN_B 6  // PWM Speed Pin
 
 /* =======================================
             Define MPU variables
    ======================================
 */
-#define INTERRUPT_PIN 2  // use pin 2 on Arduino Uno & most boards
+#define INTERRUPT_PIN 2 // use pin 2 on Arduino Uno & most boards
 
 // MPU control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
@@ -45,9 +42,9 @@ uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 
 // orientation/motion vars
-Quaternion q;           // [w, x, y, z]         quaternion container
-VectorFloat gravity;    // [x, y, z]            gravity vector
-float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+Quaternion q;        // [w, x, y, z]         quaternion container
+VectorFloat gravity; // [x, y, z]            gravity vector
+float ypr[3];        // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
 /*========================================
           Variables for balancing
@@ -63,18 +60,18 @@ float motorPower = 0;
 float spMotorPower = 0; // Speed adjusted
 
 // Pid constants
-#define Kp  75000   // 40
-#define Kd  750       // 0.05
-#define Ki  100       // 40
+#define Kp 75000 // 40
+#define Kd 750   // 0.05
+#define Ki 100   // 40
 
 // Time variables
 unsigned long int currTime, prevTime = 0;
 float sampleTime;
 
 // Control variables
-char moveDirection = "S";
+char moveDirection = 'S';
 float speedMult = 0;
-#include "Bluetooth_Macros.h" // App macros for switch
+#include "bluetooth_macros.h" // App macros for switch
 /*=======================================
         Create motor and MPU objects
    ======================================
@@ -83,16 +80,16 @@ float speedMult = 0;
 MPU6050 mpu;
 
 // Motors
-Motor RMotor = Motor(AIN1, AIN2, PWMA, offsetA, STBY); // Right Motor
-Motor LMotor = Motor(BIN1, BIN2, PWMB, offsetB, STBY); // Left Motor
-
+L298N RMotor(EN_A, IN1_A, IN2_A); // Right Motor
+L298N LMotor(EN_B, IN1_B, IN2_B); // Left Motor
 
 /*====================================
           Interrupt detection
   ====================================
 */
-volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
-void dmpDataReady() {
+volatile bool mpuInterrupt = false; // indicates whether MPU interrupt pin has gone high
+void dmpDataReady()
+{
   mpuInterrupt = true;
 }
 /*==================================================================
@@ -100,7 +97,8 @@ void dmpDataReady() {
    =================================================================
 */
 
-void setup() {
+void setup()
+{
   // join I2C bus (I2Cdev library doesn't do this automatically)
   Wire.begin();
   Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
@@ -123,7 +121,8 @@ void setup() {
   mpu.setZAccelOffset(894);
 
   // Make sure it works (returns 0):
-  if (devStatus == 0) {
+  if (devStatus == 0)
+  {
     // Calibration Time: generate offsets and calibrate our MPU6050
     mpu.CalibrateAccel(6);
     mpu.CalibrateGyro(6);
@@ -142,7 +141,8 @@ void setup() {
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
   }
-  else {
+  else
+  {
     // ERROR!
     // 1 = initial memory load failed
     // 2 = DMP configuration updates failed
@@ -153,16 +153,16 @@ void setup() {
   }
 }
 
-
 /*=====================================
                MAIN LOOP
    ====================================
 */
 
-
-void loop() {
+void loop()
+{
   // if programming failed, don't try to do anything
-  if (!dmpReady) {
+  if (!dmpReady)
+  {
     digitalWrite(9, HIGH);
     delay(1000);
     digitalWrite(9, LOW);
@@ -171,8 +171,10 @@ void loop() {
   }
 
   // wait for MPU interrupt or extra packet(s) available
-  while (!mpuInterrupt && fifoCount < packetSize) {
-    if (mpuInterrupt && fifoCount < packetSize) {
+  while (!mpuInterrupt && fifoCount < packetSize)
+  {
+    if (mpuInterrupt && fifoCount < packetSize)
+    {
       // try to get out of the infinite loop
       fifoCount = mpu.getFIFOCount();
     }
@@ -180,81 +182,83 @@ void loop() {
                            Bluetooth Switch Statement
        ===================================================================
     */
-    else if (Serial.available() > 0) {
+    else if (Serial.available() > 0)
+    {
       moveDirection = Serial.read();
-      switch (moveDirection) {
-        case STOP:
-          targetAngle = 0; // Balance
-          break;
-        case FORWARD:
-          targetAngle = speedMult * 5.0; // 5 deg times multiplier
-          break;
-        case REVERSE:
-          targetAngle = -1.0 * (speedMult * 5.0); // 5 deg times multiplier
-          break;
-        case LEFT:
-          LMotor.drive(-spMotorPower);
-          RMotor.drive(spMotorPower);
-          break;
-        case RIGHT:
-          LMotor.drive(spMotorPower);
-          RMotor.drive(-spMotorPower);
-          break;
-        case FORLEFT:
-          targetAngle = speedMult * 5.0; // 5 deg times multiplier
-          LMotor.drive(spMotorPower / 2);
-          RMotor.drive(spMotorPower * 2);
-          break;
-        case FORRIGHT:
-          targetAngle = speedMult * 5.0; // 5 deg times multiplier
-          LMotor.drive(spMotorPower * 2);
-          RMotor.drive(spMotorPower / 2);
-          break;
-        case BACKLEFT:
-          targetAngle = -1.0 * (speedMult * 5.0); // 5 deg times multiplier
-          LMotor.drive(spMotorPower * 2);
-          RMotor.drive(spMotorPower / 2);
-          break;
-        case BACKRIGHT:
-          targetAngle = -1.0 * (speedMult * 5.0); // 5 deg times multiplier
-          LMotor.drive(spMotorPower * 2);
-          RMotor.drive(spMotorPower / 2);
-          break;
-        case SPEED0:
-          speedMult = 0.0;
-          break;
-        case SPEED1:
-          speedMult = .1; // Scale to decrease speed, since from 1-10
-          break;
-        case SPEED2:
-          speedMult = .2; // Scale to decrease speed, since from 1-10
-          break;
-        case SPEED3:
-          speedMult = .3; // Scale to decrease speed, since from 1-10
-          break;
-        case SPEED4:
-          speedMult = .4; // Scale to decrease speed, since from 1-10
-          break;
-        case SPEED5:
-          speedMult = .5; // Scale to decrease speed, since from 1-10
-          break;
-        case SPEED6:
-          speedMult = .6; // Scale to decrease speed, since from 1-10
-          break;
-        case SPEED7:
-          speedMult = .7; // Scale to decrease speed, since from 1-10
-          break;
-        case SPEED8:
-          speedMult = .8; // Scale to decrease speed, since from 1-10
-          break;
-        case SPEED9:
-          speedMult = .9; // Scale to decrease speed, since from 1-10
-          break;
-        case SPEED10:
-          speedMult = 1.0; // Scale to decrease speed, since from 1-10
-          break;
-        default:
-          break;
+      switch (moveDirection)
+      {
+      case STOP:
+        targetAngle = 0; // Balance
+        break;
+      case FORWARD:
+        targetAngle = speedMult * 5.0; // 5 deg times multiplier
+        break;
+      case REVERSE:
+        targetAngle = -1.0 * (speedMult * 5.0); // 5 deg times multiplier
+        break;
+      case LEFT:
+        drive(LMotor, -spMotorPower);
+        drive(RMotor, spMotorPower);
+        break;
+      case RIGHT:
+        drive(LMotor, spMotorPower);
+        drive(RMotor, -spMotorPower);
+        break;
+      case FORLEFT:
+        targetAngle = speedMult * 5.0; // 5 deg times multiplier
+        drive(LMotor, spMotorPower / 2);
+        drive(RMotor, spMotorPower * 2);
+        break;
+      case FORRIGHT:
+        targetAngle = speedMult * 5.0; // 5 deg times multiplier
+        drive(LMotor, spMotorPower * 2);
+        drive(RMotor, spMotorPower / 2);
+        break;
+      case BACKLEFT:
+        targetAngle = -1.0 * (speedMult * 5.0); // 5 deg times multiplier
+        drive(LMotor, spMotorPower * 2);
+        drive(RMotor, spMotorPower / 2);
+        break;
+      case BACKRIGHT:
+        targetAngle = -1.0 * (speedMult * 5.0); // 5 deg times multiplier
+        drive(LMotor, spMotorPower * 2);
+        drive(RMotor, spMotorPower / 2);
+        break;
+      case SPEED0:
+        speedMult = 0.0;
+        break;
+      case SPEED1:
+        speedMult = .1; // Scale to decrease speed, since from 1-10
+        break;
+      case SPEED2:
+        speedMult = .2; // Scale to decrease speed, since from 1-10
+        break;
+      case SPEED3:
+        speedMult = .3; // Scale to decrease speed, since from 1-10
+        break;
+      case SPEED4:
+        speedMult = .4; // Scale to decrease speed, since from 1-10
+        break;
+      case SPEED5:
+        speedMult = .5; // Scale to decrease speed, since from 1-10
+        break;
+      case SPEED6:
+        speedMult = .6; // Scale to decrease speed, since from 1-10
+        break;
+      case SPEED7:
+        speedMult = .7; // Scale to decrease speed, since from 1-10
+        break;
+      case SPEED8:
+        speedMult = .8; // Scale to decrease speed, since from 1-10
+        break;
+      case SPEED9:
+        speedMult = .9; // Scale to decrease speed, since from 1-10
+        break;
+      case SPEED10:
+        speedMult = 1.0; // Scale to decrease speed, since from 1-10
+        break;
+      default:
+        break;
       }
     }
   }
@@ -265,21 +269,25 @@ void loop() {
 
   // get current FIFO count
   fifoCount = mpu.getFIFOCount();
-  if (fifoCount < packetSize) {
+  if (fifoCount < packetSize)
+  {
     //Lets go back and wait for another interrupt. We shouldn't be here, we got an interrupt from another event
   }
 
   // check for overflow (this should never happen unless our code is too inefficient)
-  else if ((mpuIntStatus & _BV(MPU6050_INTERRUPT_FIFO_OFLOW_BIT)) || fifoCount >= 1024) {
+  else if ((mpuIntStatus & _BV(MPU6050_INTERRUPT_FIFO_OFLOW_BIT)) || fifoCount >= 1024)
+  {
     // reset so we can continue cleanly
     mpu.resetFIFO();
     Serial.println(F("FIFO overflow!"));
   }
 
   // otherwise, check for DMP data ready interrupt (this should happen frequently)
-  else if (mpuIntStatus & _BV(MPU6050_INTERRUPT_DMP_INT_BIT)) {
+  else if (mpuIntStatus & _BV(MPU6050_INTERRUPT_DMP_INT_BIT))
+  {
     // read a packet from FIFO
-    while (fifoCount >= packetSize) { // Lets catch up to NOW, someone is using the dreaded delay()!
+    while (fifoCount >= packetSize)
+    { // Lets catch up to NOW, someone is using the dreaded delay()!
       mpu.getFIFOBytes(fifoBuffer, packetSize);
       // track FIFO count here in case there is > 1 packet available
       // (this lets us immediately read more without waiting for an interrupt)
@@ -293,8 +301,8 @@ void loop() {
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
     // Calculate error
-    currAngle = ypr[2] * DEG_TO_RAD;         // Get roll, which is the robot's angle
-    error = currAngle - targetAngle; //Switch? // Find error
+    currAngle = ypr[2] * DEG_TO_RAD;           // Get roll, which is the robot's angle
+    error = currAngle - targetAngle;           //Switch? // Find error
     errorSum = errorSum + error;               // Calculate sum of error for I
     errorSum = constrain(errorSum, -300, 300); // Limit Ki
 
@@ -303,7 +311,7 @@ void loop() {
     sampleTime = currTime - prevTime; // Find time needed to get values
 
     // Calculate power with PID
-    motorPower = Kp * (error) + Ki * (errorSum) * sampleTime - Kd * (currAngle - prevAngle) / sampleTime;
+    motorPower = Kp * (error) + Ki * (errorSum)*sampleTime - Kd * (currAngle - prevAngle) / sampleTime;
     spMotorPower = constrain(motorPower, -255, 255); // Limit to avoid overflow
     //spMotorPower = motorPower * speedMult; // Adjust for speed, not used
 
@@ -312,7 +320,7 @@ void loop() {
     prevTime = currTime;
 
     // Set motors
-    forward(RMotor, LMotor, spMotorPower);
+    drive(RMotor, LMotor, spMotorPower);
     /* Uncomment to print yaw/pitch/roll
         Serial.print("ypr m/Sm/t\t");
         Serial.print(ypr[0] * 180 / M_PI);

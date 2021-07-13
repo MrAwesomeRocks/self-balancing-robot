@@ -1,9 +1,5 @@
-/* Put this at the top of your file before your switch, or in a header
- * file if you want to reuse it in multiple files.
- */
-
-
-/* Macro definitions for Bluetooth RC Car app
+/*
+ * Macro definitions for Bluetooth RC Car app
  */
 
 // Directions
