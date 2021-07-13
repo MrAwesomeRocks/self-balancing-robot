@@ -13,6 +13,7 @@
 // Motor libraries
 #include "L298N.h"
 #include "motor_utils.h"
+#include "bluetooth.h"
 
 /* ======================================
            Define motor constants
@@ -70,12 +71,12 @@ float sampleTime;
 
 // Control variables
 char moveDirection = 'S';
-float speedMult = 0;
-#include "bluetooth.h" // App macros for switch
+float speedMult = 1;
 
 // Data vars
 bool printData = false; // Send info to serial
-short dataLines = 0;    // Amount of lines already printed
+short logIter = 0;      // Amount of lines already printed
+#define LOG_SPEED_DEC 5
 /*=======================================
         Create motor and MPU objects
    ======================================
@@ -201,7 +202,7 @@ void loop()
         targetAngle = speedMult * 5.0; // 5 deg times multiplier
         break;
       case REVERSE:
-        targetAngle = -1.0 * (speedMult * 5.0); // 5 deg times multiplier
+        targetAngle = -(speedMult * 5.0); // 5 deg times multiplier
         break;
       case LEFT:
         drive(LMotor, -spMotorPower);
@@ -235,31 +236,31 @@ void loop()
         speedMult = 0.0;
         break;
       case SPEED1:
-        speedMult = .1; // Scale to decrease speed, since from 1-10
+        speedMult = 0.1; // Scale to decrease speed, since from 1-10
         break;
       case SPEED2:
-        speedMult = .2; // Scale to decrease speed, since from 1-10
+        speedMult = 0.2; // Scale to decrease speed, since from 1-10
         break;
       case SPEED3:
-        speedMult = .3; // Scale to decrease speed, since from 1-10
+        speedMult = 0.3; // Scale to decrease speed, since from 1-10
         break;
       case SPEED4:
-        speedMult = .4; // Scale to decrease speed, since from 1-10
+        speedMult = 0.4; // Scale to decrease speed, since from 1-10
         break;
       case SPEED5:
-        speedMult = .5; // Scale to decrease speed, since from 1-10
+        speedMult = 0.5; // Scale to decrease speed, since from 1-10
         break;
       case SPEED6:
-        speedMult = .6; // Scale to decrease speed, since from 1-10
+        speedMult = 0.6; // Scale to decrease speed, since from 1-10
         break;
       case SPEED7:
-        speedMult = .7; // Scale to decrease speed, since from 1-10
+        speedMult = 0.7; // Scale to decrease speed, since from 1-10
         break;
       case SPEED8:
-        speedMult = .8; // Scale to decrease speed, since from 1-10
+        speedMult = 0.8; // Scale to decrease speed, since from 1-10
         break;
       case SPEED9:
-        speedMult = .9; // Scale to decrease speed, since from 1-10
+        speedMult = 0.9; // Scale to decrease speed, since from 1-10
         break;
       case SPEED10:
         speedMult = 1.0; // Scale to decrease speed, since from 1-10
@@ -322,8 +323,7 @@ void loop()
 
     // Calculate power with PID
     motorPower = Kp * (error) + Ki * (errorSum)*sampleTime - Kd * (currAngle - prevAngle) / sampleTime;
-    spMotorPower = constrain(motorPower, -255, 255); // Limit to avoid overflow
-    //spMotorPower = motorPower * speedMult; // Adjust for speed, not used
+    spMotorPower = constrain(motorPower, -255, 255) * speedMult; // Limit to avoid overflow
 
     //Refresh angles for next iteration
     prevAngle = currAngle;
@@ -333,12 +333,12 @@ void loop()
     drive(RMotor, LMotor, spMotorPower);
 
     // Print some debug info
-    if (printData)
+    if (printData && logIter % LOG_SPEED_DEC == 0)
     {
-      if (dataLines == 0)
+      if (logIter == 0)
       {
         Serial.println(F("   \t     \t    \t│"));
-        Serial.println(F("Yaw\tPitch\tRoll\t│\tmotorPower\tconstrainedMotorPower\tsampleTime"));
+        Serial.println(F("Yaw\tPitch\tRoll\t│\tmotorPower\tconstrainedMotorPower\tsampleTime\tspeedMult"));
       }
       Serial.print(ypr[0] * 180 / M_PI);
       Serial.print(F("\t"));
@@ -350,13 +350,14 @@ void loop()
       Serial.print(F("\t\t"));
       Serial.print(spMotorPower);
       Serial.print(F("\t\t\t"));
-      Serial.println(sampleTime);
-
-      dataLines++;
-      if (dataLines == 10)
-      {
-        dataLines = 0;
-      }
+      Serial.print(sampleTime);
+      Serial.print(F("\t\t"));
+      Serial.println(speedMult);
+    }
+    logIter++;
+    if (logIter == 10 * LOG_SPEED_DEC)
+    {
+      logIter = 0;
     }
   }
 }
