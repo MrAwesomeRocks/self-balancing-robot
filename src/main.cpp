@@ -1,6 +1,7 @@
-/*====================================
-               Libraries
-  ====================================
+/*
+=============
+  Libraries
+=============
 */
 // Arduino
 #include <Arduino.h>
@@ -18,9 +19,10 @@
 // Bluetooth
 #include "bluetooth.h"
 
-/* ======================================
-           Define motor constants
-   ======================================
+/*
+===============
+  Motor Setup
+===============
 */
 // Motor A:
 #define IN1_A 3 // Direction Pin 1
@@ -31,9 +33,14 @@
 #define IN2_B 7 // Direction Pin 2
 #define EN_B 6  // PWM Speed Pin
 
-/* =======================================
-            Define MPU variables
-   ======================================
+// Create motors
+L298N RMotor(EN_A, IN1_A, IN2_A); // Right Motor
+L298N LMotor(EN_B, IN1_B, IN2_B); // Left Motor
+
+/*
+=============
+  MPU Setup
+=============
 */
 #define INTERRUPT_PIN 2 // use pin 2 on Arduino Uno & most boards
 
@@ -50,54 +57,54 @@ Quaternion q;        // [w, x, y, z]         quaternion container
 VectorFloat gravity; // [x, y, z]            gravity vector
 float ypr[3];        // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
-/*========================================
-          Variables for balancing
-   =======================================
-*/
-// Angle and error variables
-double currAngle, targetAngle, motorPower, spMotorPower = 0;
-
-// Pid constants
-#define Kp 50   // 75000 // 40
-#define Ki 1.4  // 100   // 40
-#define Kd 60   // 750   // 0.05
-
-// Control variables
-char moveDirection = 'S';
-float speedMult = 1;
-
-// Data vars
-bool printData = false; // Send info to serial
-short logIter = 0;      // Amount of lines already printed
-#define LOG_SPEED_DEC 5
-/* ==================
-     Create objects
-   ==================
-*/
 // MPU
 MPU6050 mpu;
 
-// Motors
-L298N RMotor(EN_A, IN1_A, IN2_A); // Right Motor
-L298N LMotor(EN_B, IN1_B, IN2_B); // Left Motor
-
-// PID
-PID pid(&currAngle, &motorPower, &targetAngle, Kp, Ki, Kd, P_ON_E, DIRECT);
-
-/*====================================
-          Interrupt detection
-  ====================================
-*/
+// Interrupt detection
 volatile bool mpuInterrupt = false; // indicates whether MPU interrupt pin has gone high
 void dmpDataReady()
 {
   mpuInterrupt = true;
 }
-/*==================================================================
-                           SETUP FUNCTION
-   =================================================================
-*/
 
+/*
+=============
+  PID setup
+=============
+ */
+// Angle and error variables
+double angle = 0;        // Current angle (roll) of the robot
+double targetAngle = 0;  // Target angle of the robot
+double motorPower = 0;   // Motor power output by PID
+double spMotorPower = 0; // Motor power adjusted by speedMult
+
+// Pid constants
+#define Kp 50  // 75000 // 40
+#define Ki 1.4 // 100   // 40
+#define Kd 60  // 750   // 0.05
+
+// Control variables
+char moveDirection = 'S'; // Movement direction of robot (from BT)
+float speedMult = 1;      // Speed mutliplier of robot (from BT)
+
+// PID
+PID pid(&angle, &motorPower, &targetAngle, Kp, Ki, Kd, P_ON_E, DIRECT);
+
+/*
+===============
+  Misc. Setup
+===============
+ */
+// Log setup
+bool printData = false; // Send info to serial
+short logIter = 0;      // Amount of lines already printed
+#define LOG_SPEED_DEC 5 // How much the log is slowed down by
+
+/*
+====================================
+               Setup
+====================================
+*/
 void setup()
 {
   // join I2C bus (I2Cdev library doesn't do this automatically)
@@ -171,11 +178,11 @@ void setup()
   }
 }
 
-/*=====================================
-               MAIN LOOP
-   ====================================
+/*
+====================================
+            MAIN LOOP
+====================================
 */
-
 void loop()
 {
   // if programming failed, don't try to do anything
@@ -202,9 +209,10 @@ void loop()
       // try to get out of the infinite loop
       fifoCount = mpu.getFIFOCount();
     }
-    /*====================================================================
-                           Bluetooth Switch Statement
-       ===================================================================
+    /*
+    ====================================================================
+                         Bluetooth Switch Statement
+     ===================================================================
     */
     else if (Serial.available() > 0)
     {
@@ -328,7 +336,7 @@ void loop()
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
     // Calculate angle
-    currAngle = ypr[2] * RAD_TO_DEG; // Get roll, which is the robot's angle
+    angle = ypr[2] * RAD_TO_DEG; // Get roll, which is the robot's angle
 
     // Print some debug info
     if (printData && logIter % LOG_SPEED_DEC == 0)
@@ -342,7 +350,7 @@ void loop()
       Serial.print(F("\t"));
       Serial.print(ypr[1] * RAD_TO_DEG);
       Serial.print(F("\t"));
-      Serial.print(currAngle);
+      Serial.print(angle);
       Serial.print(F("\t│\t"));
       Serial.print(motorPower);
       Serial.print(F("\t\t"));

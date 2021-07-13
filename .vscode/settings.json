@@ -15,5 +15,8 @@
         "*.properties": "properties",
         "*.txt": "plaintext",
         "arduino.h": "c"
-    }
+    },
+    "cSpell.words": [
+        "Cdev"
+    ]
 }
