@@ -79,8 +79,9 @@ double motorPower = 0;   // Motor power output by PID
 double spMotorPower = 0; // Motor power adjusted by speedMult
 
 // PID constants
-double Kp, Ki, Kd;
-short rawKp, rawKi, rawKd;
+#define PID_CONST_MAX 50 // Max value for the PID constants
+double Kp, Ki, Kd;         // PID constant
+short rawKp, rawKi, rawKd; // Used to calculate corresponding PID constant
 // 75000 // 40
 // 100   // 40
 // 750   // 0.05
@@ -217,9 +218,9 @@ void loop()
     rawKd = analogRead(Kd_PIN);
 
     // Map to Kp/Ki/Kd
-    Kp = floatmap(rawKp, 0, 1023, 0, 200);
-    Ki = floatmap(rawKi, 0, 1023, 0, 200);
-    Kd = floatmap(rawKd, 0, 1023, 0, 200);
+    Kp = floatmap(rawKp, 0, 1023, 0, PID_CONST_MAX);
+    Ki = floatmap(rawKi, 0, 1023, 0, PID_CONST_MAX);
+    Kd = floatmap(rawKd, 0, 1023, 0, PID_CONST_MAX);
     pid.SetTunings(Kp, Ki, Kd);
 
     // Check for interrupt
