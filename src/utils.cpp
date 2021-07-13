@@ -54,6 +54,11 @@ void computePIDConsts(double &Kp, double &Ki, double &Kd, int pinKp, int pinKi, 
     Kd = floatmap(rawKd, 0, 1023, 0, 200);
 }
 
+/*
+ * Map a float to a range.
+ *
+ * See the map() function for more details.
+ */
 float floatmap(float x, float in_min, float in_max, float out_min, float out_max)
 {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
