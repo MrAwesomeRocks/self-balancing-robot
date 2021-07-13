@@ -6,7 +6,7 @@
 
 // Directions
 #define FORWARD 'F'
-#define REVERSE 'B'
+#define BT_REVERSE 'B'
 #define LEFT 'L'
 #define RIGHT 'R'
 #define FORLEFT 'G'

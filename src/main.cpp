@@ -6,13 +6,16 @@
 #include <Arduino.h>
 
 // MPU libraries
-#include "I2Cdev.h"
-#include "MPU6050_6Axis_MotionApps20.h"
-#include "Wire.h"
+#include <I2Cdev.h>
+#include <MPU6050_6Axis_MotionApps20.h>
+#include <Wire.h>
 
 // Motor libraries
-#include "L298N.h"
+#include <L298N.h>
+#include <PID_v1.h>
 #include "motor_utils.h"
+
+// Bluetooth
 #include "bluetooth.h"
 
 /* ======================================
@@ -52,22 +55,12 @@ float ypr[3];        // [yaw, pitch, roll]   yaw/pitch/roll container and gravit
    =======================================
 */
 // Angle and error variables
-float currAngle = 0;
-float targetAngle = 0;
-float prevAngle = 0;
-float error = 0;
-float errorSum = 0;
-float motorPower = 0;
-float spMotorPower = 0; // Speed adjusted
+double currAngle, targetAngle, motorPower, spMotorPower = 0;
 
 // Pid constants
-#define Kp 75000 // 40
-#define Kd 750   // 0.05
-#define Ki 100   // 40
-
-// Time variables
-unsigned long int currTime, prevTime = 0;
-float sampleTime;
+#define Kp 50   // 75000 // 40
+#define Ki 1.4  // 100   // 40
+#define Kd 60   // 750   // 0.05
 
 // Control variables
 char moveDirection = 'S';
@@ -77,9 +70,9 @@ float speedMult = 1;
 bool printData = false; // Send info to serial
 short logIter = 0;      // Amount of lines already printed
 #define LOG_SPEED_DEC 5
-/*=======================================
-        Create motor and MPU objects
-   ======================================
+/* ==================
+     Create objects
+   ==================
 */
 // MPU
 MPU6050 mpu;
@@ -87,6 +80,9 @@ MPU6050 mpu;
 // Motors
 L298N RMotor(EN_A, IN1_A, IN2_A); // Right Motor
 L298N LMotor(EN_B, IN1_B, IN2_B); // Left Motor
+
+// PID
+PID pid(&currAngle, &motorPower, &targetAngle, Kp, Ki, Kd, P_ON_E, DIRECT);
 
 /*====================================
           Interrupt detection
@@ -109,12 +105,18 @@ void setup()
   Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
 
   Serial.begin(9600); // Start Serial Monitor, HC-05 uses 9600
-
-  // initialize device
-  mpu.initialize();
   pinMode(INTERRUPT_PIN, INPUT);
 
+  // initialize device
+  Serial.println(F("Initializing I2C devices..."));
+  mpu.initialize();
+
+  // verify connection
+  Serial.println(F("Testing device connections..."));
+  Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+
   // load and configure the DMP
+  Serial.println(F("Initializing DMP..."));
   devStatus = mpu.dmpInitialize();
 
   // set offsets
@@ -132,22 +134,30 @@ void setup()
     mpu.CalibrateAccel(6);
     mpu.CalibrateGyro(6);
     mpu.PrintActiveOffsets();
+
     // turn on the DMP, now that it's ready
     Serial.println(F("Enabling DMP..."));
     mpu.setDMPEnabled(true);
 
     // enable Arduino interrupt detection
+    Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
     attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
     mpuIntStatus = mpu.getIntStatus();
 
     // set our DMP Ready flag so the main loop() function knows it's okay to use it
+    Serial.println(F("DMP ready! Waiting for first interrupt..."));
     dmpReady = true;
 
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
 
+    // Setup PID
+    pid.SetMode(AUTOMATIC);
+    pid.SetSampleTime(10);
+    pid.SetOutputLimits(-255, 255);
+
     // Info
-    Serial.println(F("MPU6050 Ready!"));
+    Serial.println(F("Ready!"));
   }
   else
   {
@@ -181,6 +191,12 @@ void loop()
   // wait for MPU interrupt or extra packet(s) available
   while (!mpuInterrupt && fifoCount < packetSize)
   {
+    // Compute PID
+    pid.Compute();
+    spMotorPower = motorPower * speedMult;
+    drive(RMotor, LMotor, spMotorPower);
+
+    // Check for interrupt
     if (mpuInterrupt && fifoCount < packetSize)
     {
       // try to get out of the infinite loop
@@ -201,7 +217,7 @@ void loop()
       case FORWARD:
         targetAngle = speedMult * 5.0; // 5 deg times multiplier
         break;
-      case REVERSE:
+      case BT_REVERSE:
         targetAngle = -(speedMult * 5.0); // 5 deg times multiplier
         break;
       case LEFT:
@@ -311,26 +327,8 @@ void loop()
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
-    // Calculate error
-    currAngle = ypr[2] * DEG_TO_RAD;           // Get roll, which is the robot's angle
-    error = currAngle - targetAngle;           //Switch? // Find error
-    errorSum = errorSum + error;               // Calculate sum of error for I
-    errorSum = constrain(errorSum, -300, 300); // Limit Ki
-
-    // Calculate motor power from P, I and D values
-    currTime = millis();              // Get time for Ki
-    sampleTime = currTime - prevTime; // Find time needed to get values
-
-    // Calculate power with PID
-    motorPower = Kp * (error) + Ki * (errorSum)*sampleTime - Kd * (currAngle - prevAngle) / sampleTime;
-    spMotorPower = constrain(motorPower, -255, 255) * speedMult; // Limit to avoid overflow
-
-    //Refresh angles for next iteration
-    prevAngle = currAngle;
-    prevTime = currTime;
-
-    // Set motors
-    drive(RMotor, LMotor, spMotorPower);
+    // Calculate angle
+    currAngle = ypr[2] * RAD_TO_DEG; // Get roll, which is the robot's angle
 
     // Print some debug info
     if (printData && logIter % LOG_SPEED_DEC == 0)
@@ -338,20 +336,18 @@ void loop()
       if (logIter == 0)
       {
         Serial.println(F("   \t     \t    \t│"));
-        Serial.println(F("Yaw\tPitch\tRoll\t│\tmotorPower\tconstrainedMotorPower\tsampleTime\tspeedMult"));
+        Serial.println(F("Yaw\tPitch\tRoll\t│\tmotorPower\tspMotorPower\tspeedMult"));
       }
-      Serial.print(ypr[0] * 180 / M_PI);
+      Serial.print(ypr[0] * RAD_TO_DEG);
       Serial.print(F("\t"));
-      Serial.print(ypr[1] * 180 / M_PI);
+      Serial.print(ypr[1] * RAD_TO_DEG);
       Serial.print(F("\t"));
-      Serial.print(ypr[2] * 180 / M_PI);
+      Serial.print(currAngle);
       Serial.print(F("\t│\t"));
       Serial.print(motorPower);
       Serial.print(F("\t\t"));
       Serial.print(spMotorPower);
       Serial.print(F("\t\t\t"));
-      Serial.print(sampleTime);
-      Serial.print(F("\t\t"));
       Serial.println(speedMult);
     }
     logIter++;
