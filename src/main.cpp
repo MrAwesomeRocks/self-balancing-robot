@@ -14,10 +14,10 @@
 // Motor libraries
 #include <L298N.h>
 #include <PID_v1.h>
-#include "motor_utils.h"
+#include "utils.hpp"
 
 // Bluetooth
-#include "bluetooth.h"
+#include "bluetooth.hpp"
 
 /*
 ===============
@@ -78,10 +78,16 @@ double targetAngle = 0;  // Target angle of the robot
 double motorPower = 0;   // Motor power output by PID
 double spMotorPower = 0; // Motor power adjusted by speedMult
 
-// Pid constants
-#define Kp 50  // 75000 // 40
-#define Ki 1.4 // 100   // 40
-#define Kd 60  // 750   // 0.05
+// PID constants
+double Kp, Ki, Kd;
+// 75000 // 40
+// 100   // 40
+// 750   // 0.05
+
+// PID pins
+#define Kp_PIN A0
+#define Ki_PIN A1
+#define Kd_PIN A2
 
 // Control variables
 char moveDirection = 'S'; // Movement direction of robot (from BT)
@@ -202,6 +208,9 @@ void loop()
     pid.Compute();
     spMotorPower = motorPower * speedMult;
     drive(RMotor, LMotor, spMotorPower);
+
+    // Update PID constants
+
 
     // Check for interrupt
     if (mpuInterrupt && fifoCount < packetSize)
