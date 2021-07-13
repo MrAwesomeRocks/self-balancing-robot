@@ -80,6 +80,7 @@ double spMotorPower = 0; // Motor power adjusted by speedMult
 
 // PID constants
 double Kp, Ki, Kd;
+short rawKp, rawKi, rawKd;
 // 75000 // 40
 // 100   // 40
 // 750   // 0.05
@@ -169,10 +170,6 @@ void setup()
     pid.SetSampleTime(10);
     pid.SetOutputLimits(-255, 255);
 
-    // Update PID constants
-    computePIDConsts(Kp, Ki, Kd, Kp_PIN, Ki_PIN, Kd_PIN);
-    pid.SetTunings(Kp, Ki, Kd);
-
     // Info
     Serial.println(F("Ready!"));
   }
@@ -214,7 +211,15 @@ void loop()
     drive(RMotor, LMotor, spMotorPower);
 
     // Update PID constants
-    computePIDConsts(Kp, Ki, Kd, Kp_PIN, Ki_PIN, Kd_PIN);
+    // Read values
+    rawKp = analogRead(Kp_PIN);
+    rawKi = analogRead(Ki_PIN);
+    rawKd = analogRead(Kd_PIN);
+
+    // Map to Kp/Ki/Kd
+    Kp = floatmap(rawKp, 0, 1023, 0, 200);
+    Ki = floatmap(rawKi, 0, 1023, 0, 200);
+    Kd = floatmap(rawKd, 0, 1023, 0, 200);
     pid.SetTunings(Kp, Ki, Kd);
 
     // Check for interrupt
@@ -357,7 +362,7 @@ void loop()
     {
       if (logIter == 0)
       {
-        Serial.println(F("   \t     \t    \t│  \t  \t  \t│"));
+        Serial.println(F("   \t     \t    \t│\t  \t  \t  \t│"));
         Serial.println(F("Yaw\tPitch\tRoll\t│\tKp\tKi\tKd\t│\tmotorPower\tspMotorPower\tspeedMult"));
       }
       Serial.print(ypr[0] * RAD_TO_DEG);

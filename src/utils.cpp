@@ -37,24 +37,6 @@ void drive(L298N &motor1, L298N &motor2, int speed)
 }
 
 /*
- * Compute PID constants, and change Kp, Ki, and Kd to reflect this
- *
- * A call to PID::SetTunings should come after this.
- */
-void computePIDConsts(double &Kp, double &Ki, double &Kd, int pinKp, int pinKi, int pinKd)
-{
-    // Read values
-    int rawKp = analogRead(pinKp);
-    int rawKi = analogRead(pinKi);
-    int rawKd = analogRead(pinKd);
-
-    // Map to Kp/Ki/Kd
-    Kp = floatmap(rawKp, 0, 1023, 0, 200);
-    Ki = floatmap(rawKi, 0, 1023, 0, 200);
-    Kd = floatmap(rawKd, 0, 1023, 0, 200);
-}
-
-/*
  * Map a float to a range.
  *
  * See the map() function for more details.
