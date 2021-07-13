@@ -210,7 +210,8 @@ void loop()
     drive(RMotor, LMotor, spMotorPower);
 
     // Update PID constants
-
+    computePIDConsts(Kp, Ki, Kd, Kp_PIN, Ki_PIN, Kd_PIN);
+    pid.SetTunings(Kp, Ki, Kd);
 
     // Check for interrupt
     if (mpuInterrupt && fifoCount < packetSize)
