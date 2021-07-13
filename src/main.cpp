@@ -354,7 +354,7 @@ void loop()
       if (logIter == 0)
       {
         Serial.println(F("   \t     \t    \t│  \t  \t  \t│"));
-        Serial.println(F("Yaw\tPitch\tRoll\t│Kp\tKi\tKd\t│motorPower\tspMotorPower\tspeedMult"));
+        Serial.println(F("Yaw\tPitch\tRoll\t│\tKp\tKi\tKd\t│\tmotorPower\tspMotorPower\tspeedMult"));
       }
       Serial.print(ypr[0] * RAD_TO_DEG);
       Serial.print(F("\t"));
