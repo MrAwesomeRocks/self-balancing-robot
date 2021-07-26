@@ -84,9 +84,9 @@ bool drivingEnabled = true; // Driving gets disabled if the robot is about to fa
 #define DRIVE_ANGLE 5.0     // Max amount of change in the target angle for driving
 
 // PID constants
-#define PID_CONST_MAX 50   // Max value for the PID constants
+#define PID_CONST_MAX 50.0 // Max value for the PID constants
 double Kp, Ki, Kd;         // PID constant
-short rawKp, rawKi, rawKd; // Used to calculate corresponding PID constant
+int rawKp, rawKi, rawKd; // Used to calculate corresponding PID constant
 // 75000 // 40
 // 100   // 40
 // 750   // 0.05
@@ -116,7 +116,7 @@ byte *ECHO_PINS = new byte[ECHO_COUNT]{10, 11}; // US sensor ECHO pins
 
 // Control variables
 #define MAX_OBJ_DISTANCE 2 // Max 2cm from any object
-bool pinged = false;  // Only ping once per loop
+bool pinged = false;       // Only ping once per loop
 
 /*
 ===============
@@ -240,7 +240,7 @@ void loop()
   {
     // Compute PID
     pid.Compute();
-    drive(RMotor, LMotor, motorPower);
+    utils::drive(RMotor, LMotor, motorPower);
 
     // Update PID constants
     // Read values
@@ -249,9 +249,9 @@ void loop()
     rawKd = analogRead(Kd_PIN);
 
     // Map to Kp/Ki/Kd
-    Kp = map(rawKp, 0.0, 1023.0, 0.0, PID_CONST_MAX);
-    Ki = map(rawKi, 0.0, 1023.0, 0.0, PID_CONST_MAX);
-    Kd = map(rawKd, 0.0, 1023.0, 0.0, PID_CONST_MAX);
+    Kp = utils::map(rawKp, 0, 1023, 0.0, PID_CONST_MAX);
+    Ki = utils::map(rawKi, 0, 1023, 0.0, PID_CONST_MAX);
+    Kd = utils::map(rawKd, 0, 1023, 0.0, PID_CONST_MAX);
     pid.SetTunings(Kp, Ki, Kd);
 
     //$ Make sure the robot is not about to fall over from driving
@@ -308,32 +308,32 @@ void loop()
         targetAngle = -(speedMult * DRIVE_ANGLE);
         break;
       case BT_LEFT:
-        drive(LMotor, -motorPower);
-        drive(RMotor, motorPower);
+        utils::drive(LMotor, -motorPower);
+        utils::drive(RMotor, motorPower);
         break;
       case BT_RIGHT:
-        drive(LMotor, motorPower);
-        drive(RMotor, -motorPower);
+        utils::drive(LMotor, motorPower);
+        utils::drive(RMotor, -motorPower);
         break;
       case BT_FORLEFT:
         targetAngle = speedMult * DRIVE_ANGLE;
-        drive(LMotor, motorPower / 2);
-        drive(RMotor, motorPower * 2);
+        utils::drive(LMotor, motorPower / 2);
+        utils::drive(RMotor, motorPower * 2);
         break;
       case BT_FORRIGHT:
         targetAngle = speedMult * DRIVE_ANGLE;
-        drive(LMotor, motorPower * 2);
-        drive(RMotor, motorPower / 2);
+        utils::drive(LMotor, motorPower * 2);
+        utils::drive(RMotor, motorPower / 2);
         break;
       case BT_BACKLEFT:
         targetAngle = -(speedMult * DRIVE_ANGLE);
-        drive(LMotor, motorPower * 2);
-        drive(RMotor, motorPower / 2);
+        utils::drive(LMotor, motorPower * 2);
+        utils::drive(RMotor, motorPower / 2);
         break;
       case BT_BACKRIGHT:
         targetAngle = -(speedMult * DRIVE_ANGLE);
-        drive(LMotor, motorPower * 2);
-        drive(RMotor, motorPower / 2);
+        utils::drive(LMotor, motorPower * 2);
+        utils::drive(RMotor, motorPower / 2);
         break;
       case BT_SPEED0:
         speedMult = 0.0;
