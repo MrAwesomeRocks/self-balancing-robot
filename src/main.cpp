@@ -219,9 +219,9 @@ void loop()
     rawKd = analogRead(Kd_PIN);
 
     // Map to Kp/Ki/Kd
-    Kp = floatmap(rawKp, 0, 1023, 0, PID_CONST_MAX);
-    Ki = floatmap(rawKi, 0, 1023, 0, PID_CONST_MAX);
-    Kd = floatmap(rawKd, 0, 1023, 0, PID_CONST_MAX);
+    Kp = map(rawKp, 0.0, 1023.0, 0.0, PID_CONST_MAX);
+    Ki = map(rawKi, 0.0, 1023.0, 0.0, PID_CONST_MAX);
+    Kd = map(rawKd, 0.0, 1023.0, 0.0, PID_CONST_MAX);
     pid.SetTunings(Kp, Ki, Kd);
 
     //** Make sure the robot is not about to fall over from driving
