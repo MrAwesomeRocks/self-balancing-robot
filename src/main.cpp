@@ -364,7 +364,7 @@ void loop()
       if (logIter == 0)
       {
         Serial.println(F("   \t     \t    \t│\t  \t  \t  \t│"));
-        Serial.println(F("Yaw\tPitch\tRoll\t│\tKp\tKi\tKd\t│\tmotorPower\tspMotorPower\tspeedMult"));
+        Serial.println(F("Yaw\tPitch\tRoll\t│\tKp\tKi\tKd\t│\tmotorPower\tmoveDirection\ttargetAngle"));
       }
       Serial.print(ypr[0] * RAD_TO_DEG);
       Serial.print(F("\t"));
@@ -380,9 +380,9 @@ void loop()
       Serial.print(F("\t│\t"));
       Serial.print(motorPower);
       Serial.print(F("\t\t"));
-      Serial.print(spMotorPower);
+      Serial.print(moveDirection);
       Serial.print(F("\t\t\t"));
-      Serial.println(speedMult);
+      Serial.println(targetAngle);
     }
     logIter++;
     if (logIter == 10 * LOG_SPEED_DEC)
