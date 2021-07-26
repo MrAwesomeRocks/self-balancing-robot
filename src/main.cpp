@@ -86,7 +86,7 @@ bool drivingEnabled = true; // Driving gets disabled if the robot is about to fa
 // PID constants
 #define PID_CONST_MAX 50.0 // Max value for the PID constants
 double Kp, Ki, Kd;         // PID constant
-int rawKp, rawKi, rawKd; // Used to calculate corresponding PID constant
+int rawKp, rawKi, rawKd;   // Used to calculate corresponding PID constant
 // 75000 // 40
 // 100   // 40
 // 750   // 0.05
@@ -115,8 +115,9 @@ PID pid(&angle, &motorPower, &targetAngle, Kp, Ki, Kd, P_ON_E, REVERSE);
 byte *ECHO_PINS = new byte[ECHO_COUNT]{10, 11}; // US sensor ECHO pins
 
 // Control variables
-#define MAX_OBJ_DISTANCE 2 // Max 2cm from any object
-bool pinged = false;       // Only ping once per loop
+#define MAX_OBJ_DISTANCE 10 // Max distance from any object
+#define PING_PAUSE 1000     // Pause for 1000ms between pings
+AsyncDelay pingTimer;       // Timer for pinging
 
 /*
 ===============
@@ -146,6 +147,7 @@ void setup()
 
   // Set up US sensors
   HCSR04.begin(TRIG_PIN, ECHO_PINS, ECHO_COUNT);
+  pingTimer.start(1000, AsyncDelay::MILLIS);
 
   // join I2C bus (I2Cdev library doesn't do this automatically)
   Wire.begin();
@@ -391,18 +393,18 @@ void loop()
 
     //$ Collision avoidance
     // Get distances
-    if (!pinged)
+    if (pingTimer.isExpired())
     {
       double *distances = HCSR04.measureDistanceCm();
       if (distances[0] < MAX_OBJ_DISTANCE)
       {
-        targetAngle = DRIVE_ANGLE / 2;
+        targetAngle = -DRIVE_ANGLE;
       }
       else if (distances[1] < MAX_OBJ_DISTANCE)
       {
-        targetAngle = -DRIVE_ANGLE / 2;
+        targetAngle = DRIVE_ANGLE;
       }
-      pinged = true;
+      pingTimer.restart();
     }
   }
 
@@ -477,8 +479,5 @@ void loop()
     {
       logIter = 0;
     }
-
-    // Reset ping variable
-    pinged = false;
   }
 }
