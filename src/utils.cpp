@@ -42,7 +42,7 @@ void drive(L298N &motor1, L298N &motor2, int speed)
  * See the map() function for more details.
  */
 template <class T>
-T map(T x, T in_min, T in_max, T out_min, T out_max)
+T map(T &x, T &in_min, T &in_max, T &out_min, T &out_max)
 {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
