@@ -94,7 +94,7 @@ short rawKp, rawKi, rawKd; // Used to calculate corresponding PID constant
 
 // Control variables
 char moveDirection = 'S'; // Movement direction of robot (from BT)
-float speedMult = 1;      // Speed mutliplier of robot (from BT)
+float speedMult = 0.5;    // Speed mutliplier of robot (from BT). Default to 0.5 for easier start
 
 // PID
 PID pid(&angle, &motorPower, &targetAngle, Kp, Ki, Kd, P_ON_E, REVERSE);
@@ -210,8 +210,7 @@ void loop()
   {
     // Compute PID
     pid.Compute();
-    spMotorPower = motorPower * speedMult;
-    drive(RMotor, LMotor, spMotorPower);
+    drive(RMotor, LMotor, motorPower);
 
     // Update PID constants
     // Read values
