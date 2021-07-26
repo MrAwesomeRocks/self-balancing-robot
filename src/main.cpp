@@ -77,6 +77,7 @@ double angle = 0;        // Current angle (roll) of the robot
 double targetAngle = 0;  // Target angle of the robot
 double motorPower = 0;   // Motor power output by PID
 double spMotorPower = 0; // Motor power adjusted by speedMult
+#define DRIVE_ANGLE 1.0  // Max amount of change in the target angle for driving
 
 // PID constants
 #define PID_CONST_MAX 50   // Max value for the PID constants
@@ -244,10 +245,10 @@ void loop()
         targetAngle = 0; // Balance
         break;
       case BT_FORWARD:
-        targetAngle = speedMult * 5.0; // 5 deg times multiplier
+        targetAngle = speedMult * DRIVE_ANGLE; // 5 deg times multiplier
         break;
       case BT_REVERSE:
-        targetAngle = -(speedMult * 5.0); // 5 deg times multiplier
+        targetAngle = -(speedMult * DRIVE_ANGLE); // 5 deg times multiplier
         break;
       case BT_LEFT:
         drive(LMotor, -spMotorPower);
@@ -258,22 +259,22 @@ void loop()
         drive(RMotor, -spMotorPower);
         break;
       case BT_FORLEFT:
-        targetAngle = speedMult * 5.0; // 5 deg times multiplier
+        targetAngle = speedMult * DRIVE_ANGLE; // 5 deg times multiplier
         drive(LMotor, spMotorPower / 2);
         drive(RMotor, spMotorPower * 2);
         break;
       case BT_FORRIGHT:
-        targetAngle = speedMult * 5.0; // 5 deg times multiplier
+        targetAngle = speedMult * DRIVE_ANGLE; // 5 deg times multiplier
         drive(LMotor, spMotorPower * 2);
         drive(RMotor, spMotorPower / 2);
         break;
       case BT_BACKLEFT:
-        targetAngle = -1.0 * (speedMult * 5.0); // 5 deg times multiplier
+        targetAngle = -(speedMult * DRIVE_ANGLE); // 5 deg times multiplier
         drive(LMotor, spMotorPower * 2);
         drive(RMotor, spMotorPower / 2);
         break;
       case BT_BACKRIGHT:
-        targetAngle = -1.0 * (speedMult * 5.0); // 5 deg times multiplier
+        targetAngle = -(speedMult * DRIVE_ANGLE); // 5 deg times multiplier
         drive(LMotor, spMotorPower * 2);
         drive(RMotor, spMotorPower / 2);
         break;
