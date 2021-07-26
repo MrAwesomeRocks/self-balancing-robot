@@ -18,6 +18,7 @@
 
 // Bluetooth
 #include "bluetooth.hpp"
+#include <AsyncDelay.h>
 
 /*
 ===============
@@ -93,8 +94,9 @@ short rawKp, rawKi, rawKd; // Used to calculate corresponding PID constant
 #define Kd_PIN A2
 
 // Control variables
-char moveDirection = 'S'; // Movement direction of robot (from BT)
-float speedMult = 0.5;    // Speed mutliplier of robot (from BT). Default to 0.5 for easier start
+char moveDirection = 'S';              // Movement direction of robot (from BT)
+char oldMoveDirection = moveDirection; // Used to determine when to blink LED
+float speedMult = 0.5;                 // Speed mutliplier of robot (from BT). Default to 0.5 for easier start
 
 // PID
 PID pid(&angle, &motorPower, &targetAngle, Kp, Ki, Kd, P_ON_E, REVERSE);
@@ -110,6 +112,9 @@ PID pid(&angle, &motorPower, &targetAngle, Kp, Ki, Kd, P_ON_E, REVERSE);
 bool printData = false; // Send info to serial
 short logIter = 0;      // Amount of lines already printed
 
+// LED Blinker
+AsyncDelay ledBlinker;
+
 /*
 ====================================
                Setup
@@ -117,6 +122,11 @@ short logIter = 0;      // Amount of lines already printed
 */
 void setup()
 {
+  // Set up LED
+  pinMode(LED_BUILTIN, OUTPUT);
+  ledBlinker.start(100, AsyncDelay::MILLIS);
+  ledBlinker.expire();
+
   // join I2C bus (I2Cdev library doesn't do this automatically)
   Wire.begin();
   Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
@@ -198,9 +208,9 @@ void loop()
   // if programming failed, don't try to do anything
   if (!dmpReady)
   {
-    digitalWrite(9, HIGH);
+    digitalWrite(LED_BUILTIN, HIGH);
     delay(1000);
-    digitalWrite(9, LOW);
+    digitalWrite(LED_BUILTIN, LOW);
     delay(1000);
     return;
   }
@@ -224,7 +234,7 @@ void loop()
     Kd = map(rawKd, 0.0, 1023.0, 0.0, PID_CONST_MAX);
     pid.SetTunings(Kp, Ki, Kd);
 
-    //** Make sure the robot is not about to fall over from driving
+    //$ Make sure the robot is not about to fall over from driving
     if (drivingEnabled)
     {
       // Robot can drive
@@ -245,6 +255,12 @@ void loop()
       }
     }
 
+    // Stop LED Blinking
+    if (ledBlinker.isExpired())
+    {
+      digitalWrite(LED_BUILTIN, LOW);
+    }
+
     // Check for interrupt
     if (mpuInterrupt && fifoCount < packetSize)
     {
@@ -258,6 +274,7 @@ void loop()
     */
     else if (drivingEnabled && Serial.available() > 0)
     {
+      oldMoveDirection = moveDirection;
       moveDirection = Serial.read();
       switch (moveDirection)
       {
@@ -342,6 +359,13 @@ void loop()
         break;
       default:
         break;
+      }
+
+      // Blink LED
+      if (oldMoveDirection != moveDirection)
+      {
+        digitalWrite(LED_BUILTIN, HIGH);
+        ledBlinker.restart();
       }
     }
   }
