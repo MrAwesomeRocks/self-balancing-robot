@@ -73,11 +73,11 @@ void dmpDataReady()
 =============
  */
 // Angle and error variables
-double angle = 0;        // Current angle (roll) of the robot
-double targetAngle = 0;  // Target angle of the robot
-double motorPower = 0;   // Motor power output by PID
-double spMotorPower = 0; // Motor power adjusted by speedMult
-#define DRIVE_ANGLE 1.0  // Max amount of change in the target angle for driving
+double angle = 0;           // Current angle (roll) of the robot
+double targetAngle = 0;     // Target angle of the robot
+double motorPower = 0;      // Motor power output by PID
+bool drivingEnabled = true; // Driving gets disabled if the robot is about to fall over
+#define DRIVE_ANGLE 5.0     // Max amount of change in the target angle for driving
 
 // PID constants
 #define PID_CONST_MAX 50   // Max value for the PID constants
@@ -224,6 +224,27 @@ void loop()
     Kd = floatmap(rawKd, 0, 1023, 0, PID_CONST_MAX);
     pid.SetTunings(Kp, Ki, Kd);
 
+    //** Make sure the robot is not about to fall over from driving
+    if (drivingEnabled)
+    {
+      // Robot can drive
+      if (abs(targetAngle - angle) > DRIVE_ANGLE)
+      {
+        // Robot is at an angle twice as much as the max drive angle -- BAD!!
+        drivingEnabled = false;
+        targetAngle = 0;
+      }
+    }
+    else
+    {
+      // Driving has been disabled for some reason
+      if (!(abs(targetAngle - angle) > DRIVE_ANGLE))
+      {
+        // Robot is balanced again
+        drivingEnabled = true;
+      }
+    }
+
     // Check for interrupt
     if (mpuInterrupt && fifoCount < packetSize)
     {
@@ -235,7 +256,7 @@ void loop()
                          Bluetooth Switch Statement
      ===================================================================
     */
-    else if (Serial.available() > 0)
+    else if (drivingEnabled && Serial.available() > 0)
     {
       moveDirection = Serial.read();
       switch (moveDirection)
@@ -250,32 +271,32 @@ void loop()
         targetAngle = -(speedMult * DRIVE_ANGLE); // 5 deg times multiplier
         break;
       case BT_LEFT:
-        drive(LMotor, -spMotorPower);
-        drive(RMotor, spMotorPower);
+        drive(LMotor, -motorPower);
+        drive(RMotor, motorPower);
         break;
       case BT_RIGHT:
-        drive(LMotor, spMotorPower);
-        drive(RMotor, -spMotorPower);
+        drive(LMotor, motorPower);
+        drive(RMotor, -motorPower);
         break;
       case BT_FORLEFT:
         targetAngle = speedMult * DRIVE_ANGLE; // 5 deg times multiplier
-        drive(LMotor, spMotorPower / 2);
-        drive(RMotor, spMotorPower * 2);
+        drive(LMotor, motorPower / 2);
+        drive(RMotor, motorPower * 2);
         break;
       case BT_FORRIGHT:
         targetAngle = speedMult * DRIVE_ANGLE; // 5 deg times multiplier
-        drive(LMotor, spMotorPower * 2);
-        drive(RMotor, spMotorPower / 2);
+        drive(LMotor, motorPower * 2);
+        drive(RMotor, motorPower / 2);
         break;
       case BT_BACKLEFT:
         targetAngle = -(speedMult * DRIVE_ANGLE); // 5 deg times multiplier
-        drive(LMotor, spMotorPower * 2);
-        drive(RMotor, spMotorPower / 2);
+        drive(LMotor, motorPower * 2);
+        drive(RMotor, motorPower / 2);
         break;
       case BT_BACKRIGHT:
         targetAngle = -(speedMult * DRIVE_ANGLE); // 5 deg times multiplier
-        drive(LMotor, spMotorPower * 2);
-        drive(RMotor, spMotorPower / 2);
+        drive(LMotor, motorPower * 2);
+        drive(RMotor, motorPower / 2);
         break;
       case BT_SPEED0:
         speedMult = 0.0;
@@ -309,6 +330,12 @@ void loop()
         break;
       case BT_SPEED10:
         speedMult = 1.0; // Scale to decrease speed, since from 1-10
+        break;
+      case BT_EXTRA_ON:
+        printData = true;
+        break;
+      case BT_EXTRA_OFF:
+        printData = false;
         break;
       case LOG_CHAR:
         printData = !printData;
@@ -357,7 +384,7 @@ void loop()
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
     // Calculate angle
-    angle = ypr[2] * RAD_TO_DEG; // Get roll, which is the robot's angle
+    angle = degrees(ypr[2]); // Get roll, which is the robot's angle
 
     // Print some debug info
     if (printData && logIter % LOG_SPEED_DEC == 0)
@@ -367,9 +394,9 @@ void loop()
         Serial.println(F("   \t     \t    \t│\t  \t  \t  \t│"));
         Serial.println(F("Yaw\tPitch\tRoll\t│\tKp\tKi\tKd\t│\tmotorPower\tmoveDirection\ttargetAngle"));
       }
-      Serial.print(ypr[0] * RAD_TO_DEG);
+      Serial.print(degrees(ypr[0]));
       Serial.print(F("\t"));
-      Serial.print(ypr[1] * RAD_TO_DEG);
+      Serial.print(degrees(ypr[1]));
       Serial.print(F("\t"));
       Serial.print(angle);
       Serial.print(F("\t│\t"));
@@ -382,7 +409,7 @@ void loop()
       Serial.print(motorPower);
       Serial.print(F("\t\t"));
       Serial.print(moveDirection);
-      Serial.print(F("\t\t\t"));
+      Serial.print(F("\t\t"));
       Serial.println(targetAngle);
     }
     logIter++;

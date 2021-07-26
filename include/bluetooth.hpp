@@ -27,4 +27,8 @@
 #define BT_SPEED8 '8'
 #define BT_SPEED9 '9'
 #define BT_SPEED10 'q'
+
+// Other
+#define BT_EXTRA_ON 'X'
+#define BT_EXTRA_OFF 'x'
 #endif
