@@ -20,6 +20,9 @@
 #include "bluetooth.hpp"
 #include <AsyncDelay.h>
 
+// Ultrasonic
+#include <HCSR04.h>
+
 /*
 ===============
   Motor Setup
@@ -102,6 +105,20 @@ float speedMult = 0.5;                 // Speed mutliplier of robot (from BT). D
 PID pid(&angle, &motorPower, &targetAngle, Kp, Ki, Kd, P_ON_E, REVERSE);
 
 /*
+============
+  US setup
+============
+ */
+// Pins
+#define TRIG_PIN 9                              // US pin connected to TRIG
+#define ECHO_COUNT 2                            // Amount of US sensors
+byte *ECHO_PINS = new byte[ECHO_COUNT]{10, 11}; // US sensor ECHO pins
+
+// Control variables
+#define MAX_OBJ_DISTANCE 2 // Max 2cm from any object
+bool pinged = false;  // Only ping once per loop
+
+/*
 ===============
   Misc. Setup
 ===============
@@ -126,6 +143,9 @@ void setup()
   pinMode(LED_BUILTIN, OUTPUT);
   ledBlinker.start(100, AsyncDelay::MILLIS);
   ledBlinker.expire();
+
+  // Set up US sensors
+  HCSR04.begin(TRIG_PIN, ECHO_PINS, ECHO_COUNT);
 
   // join I2C bus (I2Cdev library doesn't do this automatically)
   Wire.begin();
@@ -282,10 +302,10 @@ void loop()
         targetAngle = 0; // Balance
         break;
       case BT_FORWARD:
-        targetAngle = speedMult * DRIVE_ANGLE; // 5 deg times multiplier
+        targetAngle = speedMult * DRIVE_ANGLE;
         break;
       case BT_REVERSE:
-        targetAngle = -(speedMult * DRIVE_ANGLE); // 5 deg times multiplier
+        targetAngle = -(speedMult * DRIVE_ANGLE);
         break;
       case BT_LEFT:
         drive(LMotor, -motorPower);
@@ -296,22 +316,22 @@ void loop()
         drive(RMotor, -motorPower);
         break;
       case BT_FORLEFT:
-        targetAngle = speedMult * DRIVE_ANGLE; // 5 deg times multiplier
+        targetAngle = speedMult * DRIVE_ANGLE;
         drive(LMotor, motorPower / 2);
         drive(RMotor, motorPower * 2);
         break;
       case BT_FORRIGHT:
-        targetAngle = speedMult * DRIVE_ANGLE; // 5 deg times multiplier
+        targetAngle = speedMult * DRIVE_ANGLE;
         drive(LMotor, motorPower * 2);
         drive(RMotor, motorPower / 2);
         break;
       case BT_BACKLEFT:
-        targetAngle = -(speedMult * DRIVE_ANGLE); // 5 deg times multiplier
+        targetAngle = -(speedMult * DRIVE_ANGLE);
         drive(LMotor, motorPower * 2);
         drive(RMotor, motorPower / 2);
         break;
       case BT_BACKRIGHT:
-        targetAngle = -(speedMult * DRIVE_ANGLE); // 5 deg times multiplier
+        targetAngle = -(speedMult * DRIVE_ANGLE);
         drive(LMotor, motorPower * 2);
         drive(RMotor, motorPower / 2);
         break;
@@ -367,6 +387,22 @@ void loop()
         digitalWrite(LED_BUILTIN, HIGH);
         ledBlinker.restart();
       }
+    }
+
+    //$ Collision avoidance
+    // Get distances
+    if (!pinged)
+    {
+      double *distances = HCSR04.measureDistanceCm();
+      if (distances[0] < MAX_OBJ_DISTANCE)
+      {
+        targetAngle = DRIVE_ANGLE / 2;
+      }
+      else if (distances[1] < MAX_OBJ_DISTANCE)
+      {
+        targetAngle = -DRIVE_ANGLE / 2;
+      }
+      pinged = true;
     }
   }
 
@@ -441,5 +477,8 @@ void loop()
     {
       logIter = 0;
     }
+
+    // Reset ping variable
+    pinged = false;
   }
 }
