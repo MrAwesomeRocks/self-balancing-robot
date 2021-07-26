@@ -79,7 +79,7 @@ double motorPower = 0;   // Motor power output by PID
 double spMotorPower = 0; // Motor power adjusted by speedMult
 
 // PID constants
-#define PID_CONST_MAX 50 // Max value for the PID constants
+#define PID_CONST_MAX 50   // Max value for the PID constants
 double Kp, Ki, Kd;         // PID constant
 short rawKp, rawKi, rawKd; // Used to calculate corresponding PID constant
 // 75000 // 40
@@ -104,9 +104,10 @@ PID pid(&angle, &motorPower, &targetAngle, Kp, Ki, Kd, P_ON_E, REVERSE);
 ===============
  */
 // Log setup
+#define LOG_SPEED_DEC 5 // How much the log is slowed down by
+#define LOG_CHAR 'z'    // Key that enables/disables logging
 bool printData = false; // Send info to serial
 short logIter = 0;      // Amount of lines already printed
-#define LOG_SPEED_DEC 5 // How much the log is slowed down by
 
 /*
 ====================================
@@ -239,78 +240,78 @@ void loop()
       moveDirection = Serial.read();
       switch (moveDirection)
       {
-      case STOP:
+      case BT_STOP:
         targetAngle = 0; // Balance
         break;
-      case FORWARD:
+      case BT_FORWARD:
         targetAngle = speedMult * 5.0; // 5 deg times multiplier
         break;
       case BT_REVERSE:
         targetAngle = -(speedMult * 5.0); // 5 deg times multiplier
         break;
-      case LEFT:
+      case BT_LEFT:
         drive(LMotor, -spMotorPower);
         drive(RMotor, spMotorPower);
         break;
-      case RIGHT:
+      case BT_RIGHT:
         drive(LMotor, spMotorPower);
         drive(RMotor, -spMotorPower);
         break;
-      case FORLEFT:
+      case BT_FORLEFT:
         targetAngle = speedMult * 5.0; // 5 deg times multiplier
         drive(LMotor, spMotorPower / 2);
         drive(RMotor, spMotorPower * 2);
         break;
-      case FORRIGHT:
+      case BT_FORRIGHT:
         targetAngle = speedMult * 5.0; // 5 deg times multiplier
         drive(LMotor, spMotorPower * 2);
         drive(RMotor, spMotorPower / 2);
         break;
-      case BACKLEFT:
+      case BT_BACKLEFT:
         targetAngle = -1.0 * (speedMult * 5.0); // 5 deg times multiplier
         drive(LMotor, spMotorPower * 2);
         drive(RMotor, spMotorPower / 2);
         break;
-      case BACKRIGHT:
+      case BT_BACKRIGHT:
         targetAngle = -1.0 * (speedMult * 5.0); // 5 deg times multiplier
         drive(LMotor, spMotorPower * 2);
         drive(RMotor, spMotorPower / 2);
         break;
-      case SPEED0:
+      case BT_SPEED0:
         speedMult = 0.0;
         break;
-      case SPEED1:
+      case BT_SPEED1:
         speedMult = 0.1; // Scale to decrease speed, since from 1-10
         break;
-      case SPEED2:
+      case BT_SPEED2:
         speedMult = 0.2; // Scale to decrease speed, since from 1-10
         break;
-      case SPEED3:
+      case BT_SPEED3:
         speedMult = 0.3; // Scale to decrease speed, since from 1-10
         break;
-      case SPEED4:
+      case BT_SPEED4:
         speedMult = 0.4; // Scale to decrease speed, since from 1-10
         break;
-      case SPEED5:
+      case BT_SPEED5:
         speedMult = 0.5; // Scale to decrease speed, since from 1-10
         break;
-      case SPEED6:
+      case BT_SPEED6:
         speedMult = 0.6; // Scale to decrease speed, since from 1-10
         break;
-      case SPEED7:
+      case BT_SPEED7:
         speedMult = 0.7; // Scale to decrease speed, since from 1-10
         break;
-      case SPEED8:
+      case BT_SPEED8:
         speedMult = 0.8; // Scale to decrease speed, since from 1-10
         break;
-      case SPEED9:
+      case BT_SPEED9:
         speedMult = 0.9; // Scale to decrease speed, since from 1-10
         break;
-      case SPEED10:
+      case BT_SPEED10:
         speedMult = 1.0; // Scale to decrease speed, since from 1-10
         break;
-      case DATA:
-        printData = true;
+      case LOG_CHAR:
+        printData = !printData;
         break;
       default:
         break;
